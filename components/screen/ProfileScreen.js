@@ -2,9 +2,9 @@ import React, { useState } from 'react';
 import { StyleSheet, Text, View, TouchableOpacity, SafeAreaView, TextInput } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
-const ProfileScreen = ({ onBackToDashboard, onLogout, selectedRole = 'Admin' }) => {
-  const [fullName, setFullName] = useState('');
-  const [usernameOrEmail, setUsernameOrEmail] = useState('');
+const ProfileScreen = ({ onBackToDashboard, onLogout, selectedRole = 'Admin', currentUser }) => {
+  const [fullName, setFullName] = useState(currentUser?.displayName || selectedRole);
+  const [usernameOrEmail, setUsernameOrEmail] = useState(currentUser?.email || '');
   const [status, setStatus] = useState('Active');
 
   const [currentPassword, setCurrentPassword] = useState('');

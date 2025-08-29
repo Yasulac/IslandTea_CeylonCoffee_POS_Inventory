@@ -7,7 +7,7 @@ import ReportsScreen from './ReportsScreen';
 import SettingsScreen from './SettingsScreen';
 import ProfileScreen from './ProfileScreen';
 
-const DashboardScreen = ({ onLogout, selectedRole = 'Admin' }) => {
+const DashboardScreen = ({ onLogout, selectedRole = 'Admin', currentUser }) => {
   const [currentScreen, setCurrentScreen] = useState('dashboard');
 
   const navigationItems = [
@@ -63,7 +63,7 @@ const DashboardScreen = ({ onLogout, selectedRole = 'Admin' }) => {
 
   // Show Reports Screen
   if (currentScreen === 'reports') {
-    return <ReportsScreen onBackToDashboard={handleBackToDashboard} selectedRole={selectedRole} />;
+    return <ReportsScreen onBackToDashboard={handleBackToDashboard} selectedRole={selectedRole} currentUser={currentUser} />;
   }
 
   // Show Settings Screen (Admin only)
@@ -73,7 +73,7 @@ const DashboardScreen = ({ onLogout, selectedRole = 'Admin' }) => {
 
   // Show Profile Screen
   if (currentScreen === 'profile') {
-    return <ProfileScreen onBackToDashboard={handleBackToDashboard} onLogout={onLogout} selectedRole={selectedRole} />;
+    return <ProfileScreen onBackToDashboard={handleBackToDashboard} onLogout={onLogout} selectedRole={selectedRole} currentUser={currentUser} />;
   }
 
   return (
@@ -83,7 +83,7 @@ const DashboardScreen = ({ onLogout, selectedRole = 'Admin' }) => {
         <Text style={styles.headerTitle}>Island Tea & Ceylon Coffee POS</Text>
         <View style={styles.headerRight}>
           <View style={styles.userInfo}>
-            <Text style={styles.welcomeText}>Welcome, {selectedRole}</Text>
+            <Text style={styles.welcomeText}>Welcome, {currentUser?.email || selectedRole}</Text>
             <Text style={styles.roleText}>{selectedRole}</Text>
           </View>
           <View style={styles.userIcon}>

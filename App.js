@@ -1,35 +1,96 @@
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View, TextInput, TouchableOpacity, SafeAreaView, Image } from 'react-native';
+import { StyleSheet, Text, View, TextInput, TouchableOpacity, SafeAreaView, Image, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import DashboardScreen from './components/screen/DashboardScreen';
 import { InventoryProvider } from './components/context/InventoryContext';
+import { loginUser, logoutUser, onAuthStateChange, getCurrentUser, getAvailableUsers } from './components/services/auth';
 
 export default function App() {
   const [selectedRole, setSelectedRole] = useState('Admin');
   const [showRoleDropdown, setShowRoleDropdown] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [currentUser, setCurrentUser] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
 
   const roles = ['Admin', 'Cashier'];
+  const availableUsers = getAvailableUsers();
+
+  // Check authentication state on app start
+  useEffect(() => {
+    const unsubscribe = onAuthStateChange((user) => {
+      if (user) {
+        setCurrentUser(user);
+        setIsLoggedIn(true);
+        setSelectedRole(user.displayName || 'Admin');
+      } else {
+        setCurrentUser(null);
+        setIsLoggedIn(false);
+      }
+      setIsLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, []);
 
   const handleRoleSelect = (role) => {
     setSelectedRole(role);
     setShowRoleDropdown(false);
   };
 
-  const handleLogin = () => {
-    setIsLoggedIn(true);
+  const handleLogin = async () => {
+    if (!username.trim() || !password.trim()) {
+      Alert.alert('Error', 'Please enter both username and password.');
+      return;
+    }
+
+    setIsLoggingIn(true);
+    try {
+      const result = await loginUser(username.trim(), password, selectedRole);
+      setCurrentUser(result.user);
+      setIsLoggedIn(true);
+      setPassword(''); // Clear password for security
+      console.log('Login successful:', result.role);
+    } catch (error) {
+      Alert.alert('Login Failed', error.message);
+      console.error('Login error:', error);
+    } finally {
+      setIsLoggingIn(false);
+    }
   };
 
-  const handleLogout = () => {
-    setIsLoggedIn(false);
+  const handleLogout = async () => {
+    try {
+      await logoutUser();
+      setCurrentUser(null);
+      setIsLoggedIn(false);
+      setUsername('');
+      setPassword('');
+      setSelectedRole('Admin');
+    } catch (error) {
+      Alert.alert('Logout Error', error.message);
+    }
   };
+
+  // Show loading screen while checking authentication
+  if (isLoading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <Text style={styles.loadingText}>Loading...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   // Show Dashboard if logged in, otherwise show Login
   if (isLoggedIn) {
     return (
       <InventoryProvider>
-        <DashboardScreen onLogout={handleLogout} selectedRole={selectedRole} />
+        <DashboardScreen onLogout={handleLogout} selectedRole={selectedRole} currentUser={currentUser} />
       </InventoryProvider>
     );
   }
@@ -54,11 +115,16 @@ export default function App() {
 
         {/* Username Field */}
         <View style={styles.inputContainer}>
-          <Text style={styles.inputLabel}>Username</Text>
+          <Text style={styles.inputLabel}>Email</Text>
           <TextInput
             style={styles.textInput}
-            placeholder="Enter username"
+            placeholder="Enter email address"
             placeholderTextColor="#9CA3AF"
+            value={username}
+            onChangeText={setUsername}
+            keyboardType="email-address"
+            autoCapitalize="none"
+            autoCorrect={false}
           />
         </View>
 
@@ -70,6 +136,10 @@ export default function App() {
             placeholder="Enter password"
             placeholderTextColor="#9CA3AF"
             secureTextEntry
+            value={password}
+            onChangeText={setPassword}
+            autoCapitalize="none"
+            autoCorrect={false}
           />
         </View>
 
@@ -115,9 +185,23 @@ export default function App() {
         </View>
 
         {/* Login Button */}
-        <TouchableOpacity style={styles.loginButton} activeOpacity={0.8} onPress={handleLogin}>
-          <Text style={styles.loginButtonText}>Log in</Text>
+        <TouchableOpacity 
+          style={[styles.loginButton, isLoggingIn && styles.loginButtonDisabled]} 
+          activeOpacity={0.8} 
+          onPress={handleLogin}
+          disabled={isLoggingIn}
+        >
+          <Text style={styles.loginButtonText}>
+            {isLoggingIn ? 'Logging in...' : 'Log in'}
+          </Text>
         </TouchableOpacity>
+
+        {/* Demo Credentials */}
+        <View style={styles.demoContainer}>
+          <Text style={styles.demoTitle}>Demo Credentials:</Text>
+          <Text style={styles.demoText}>Admin: admin@islandtea.com / admin123</Text>
+          <Text style={styles.demoText}>Cashier: cashier@islandtea.com / cashier123</Text>
+        </View>
 
         {/* Forgot Password Link */}
         <TouchableOpacity style={styles.forgotPasswordContainer}>
@@ -247,5 +331,40 @@ const styles = StyleSheet.create({
     color: '#6B7280',
     fontSize: 12,
     textDecorationLine: 'underline',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    fontSize: 18,
+    color: '#E5E7EB',
+    fontWeight: '600',
+  },
+  loginButtonDisabled: {
+    backgroundColor: '#9CA3AF',
+    opacity: 0.7,
+  },
+  demoContainer: {
+    marginTop: 20,
+    padding: 15,
+    backgroundColor: '#F3F4F6',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+  },
+  demoTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#374151',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  demoText: {
+    fontSize: 12,
+    color: '#6B7280',
+    textAlign: 'center',
+    marginBottom: 4,
   },
 });

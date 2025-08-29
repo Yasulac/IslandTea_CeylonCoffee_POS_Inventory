@@ -1,9 +1,10 @@
 import React, { useMemo, useState } from 'react';
-import { StyleSheet, Text, View, TouchableOpacity, ScrollView, SafeAreaView, TextInput } from 'react-native';
+import { StyleSheet, Text, View, TouchableOpacity, ScrollView, SafeAreaView, TextInput, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import CheckoutScreen from './CheckoutScreen';
 import TransactionReceiptScreen from './TransactionReceiptScreen';
 import { useInventory } from '../context/InventoryContext';
+import { writeSaleAndDecrementStock } from '../services/firestore';
 
 const POSSaleScreen = ({ onBackToDashboard, selectedRole = 'Cashier' }) => {
   const [currentScreen, setCurrentScreen] = useState('pos-sale');
@@ -15,7 +16,15 @@ const POSSaleScreen = ({ onBackToDashboard, selectedRole = 'Cashier' }) => {
   const [selectedCategory, setSelectedCategory] = useState('');
 
   const products = useMemo(() => (
-    inventoryItems.map(i => ({ id: i.id, name: i.name, price: Number(i.price) || 0, category: i.category, image: null, stock: i.stock }))
+    inventoryItems.map(i => ({ 
+      id: i.sku || i.id, // Use SKU as primary ID, fallback to Firestore ID
+      sku: i.sku,
+      name: i.name, 
+      price: Number(i.price) || 0, 
+      category: i.category, 
+      image: null, 
+      stock: i.stock 
+    }))
   ), [inventoryItems]);
 
   const addToCart = (product) => {
@@ -29,6 +38,7 @@ const POSSaleScreen = ({ onBackToDashboard, selectedRole = 'Cashier' }) => {
     } else {
       setCartItems([...cartItems, { 
         id: product.id,
+        sku: product.sku, // Include SKU for Firestore lookup
         name: product.name,
         price: product.price,
         quantity: 1 
@@ -58,12 +68,29 @@ const POSSaleScreen = ({ onBackToDashboard, selectedRole = 'Cashier' }) => {
     setCurrentScreen('pos-sale');
   };
 
-  const handlePaymentComplete = (details) => {
-    cartItems.forEach(item => {
-      adjustStockById(item.id, -item.quantity);
-    });
-    setPaymentDetails(details || null);
-    setCurrentScreen('receipt');
+  const handlePaymentComplete = async (details) => {
+    try {
+      console.log('Starting payment completion...', { cartItems, details });
+      
+      // Persist sale and decrement stock in Firestore
+      const saleId = await writeSaleAndDecrementStock({ cartItems, payment: details || {} });
+      console.log('Sale completed successfully:', saleId);
+      
+      // UI follows Firestore via subscription; also adjust local fallback
+      cartItems.forEach(item => {
+        adjustStockById(item.id, -item.quantity);
+      });
+      setPaymentDetails(details || null);
+      setCurrentScreen('receipt');
+    } catch (e) {
+      console.error('Failed to complete sale:', e);
+      // Show user-friendly error
+      Alert.alert(
+        'Payment Error', 
+        'Failed to complete payment. Please try again or contact support.',
+        [{ text: 'OK' }]
+      );
+    }
   };
 
   const handleCancelSale = () => {

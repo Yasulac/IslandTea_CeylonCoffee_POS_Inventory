@@ -131,13 +131,17 @@ const InventoryManagementScreen = ({ onBackToDashboard, selectedRole = 'Admin' }
   };
 
   const handleStockIn = (productId) => {
-    // Handle stock-in logic
-    console.log('Stock-in for product:', productId);
+    const item = inventoryItems.find(i => i.id === productId);
+    if (!item) return;
+    const next = Math.max(0, (item.stock || 0) + 1);
+    updateProduct(productId, { stock: next });
   };
 
   const handleStockOut = (productId) => {
-    // Handle stock-out logic
-    console.log('Stock-out for product:', productId);
+    const item = inventoryItems.find(i => i.id === productId);
+    if (!item) return;
+    const next = Math.max(0, (item.stock || 0) - 1);
+    updateProduct(productId, { stock: next });
   };
 
   const getFilteredAndSortedItems = () => {

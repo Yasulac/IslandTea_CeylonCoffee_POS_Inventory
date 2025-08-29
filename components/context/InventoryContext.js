@@ -1,16 +1,20 @@
-import React, { createContext, useContext, useMemo, useState } from 'react';
+import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import { subscribeToProducts, addProductDoc, updateProductDoc } from '../services/firestore';
 
 const InventoryContext = createContext(null);
 
 export const InventoryProvider = ({ children }) => {
-  const [inventoryItems, setInventoryItems] = useState([
-    { id: 1, name: 'Wintermelon Milk Tea', sku: 'A123', stock: 20, price: 4.50, cost: 3.20, category: 'Milk Tea', status: 'active' },
-    { id: 2, name: 'Ceylon Black Tea', sku: '1001', stock: 15, price: 3.00, cost: 2.10, category: 'Tea', status: 'active' },
-    { id: 3, name: 'Arabica Coffee Beans', sku: 'B456', stock: 8, price: 5.50, cost: 4.20, category: 'Coffee', status: 'low-stock' },
-    { id: 4, name: 'Taro Powder', sku: 'C789', stock: 25, price: 2.80, cost: 1.90, category: 'Powder', status: 'active' },
-    { id: 5, name: 'Milk Powder', sku: 'D012', stock: 5, price: 3.20, cost: 2.50, category: 'Powder', status: 'low-stock' },
-    { id: 6, name: 'Brown Sugar Syrup', sku: 'E345', stock: 18, price: 1.50, cost: 0.80, category: 'Syrup', status: 'active' },
-  ]);
+  const [inventoryItems, setInventoryItems] = useState([]);
+
+  // Firestore subscription
+  useEffect(() => {
+    console.log('Setting up Firestore subscription...');
+    const unsub = subscribeToProducts((items) => {
+      console.log('Received products from Firestore:', items.length);
+      setInventoryItems(items);
+    });
+    return () => unsub();
+  }, []);
 
   const recomputeStatuses = (items) => {
     return items.map(item => ({
@@ -25,18 +29,12 @@ export const InventoryProvider = ({ children }) => {
       .map(i => ({ id: i.id, name: i.name, stock: i.stock, threshold: 10 }))
   ), [inventoryItems]);
 
-  const addProduct = (product) => {
-    setInventoryItems(prev => {
-      const next = [{ ...product, id: Date.now() }, ...prev];
-      return recomputeStatuses(next);
-    });
+  const addProduct = async (product) => {
+    await addProductDoc(product);
   };
 
-  const updateProduct = (productId, updates) => {
-    setInventoryItems(prev => {
-      const next = prev.map(item => item.id === productId ? { ...item, ...updates } : item);
-      return recomputeStatuses(next);
-    });
+  const updateProduct = async (productId, updates) => {
+    await updateProductDoc(productId, updates);
   };
 
   const adjustStockById = (productId, delta) => {
