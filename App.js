@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useState, useEffect } from 'react';
 import DashboardScreen from './components/screen/DashboardScreen';
 import { InventoryProvider } from './components/context/InventoryContext';
+import { DashboardProvider } from './components/context/DashboardContext';
 import { loginUser, logoutUser, onAuthStateChange, getCurrentUser, getAvailableUsers } from './components/services/auth';
 
 export default function App() {
@@ -90,7 +91,9 @@ export default function App() {
   if (isLoggedIn) {
     return (
       <InventoryProvider>
-        <DashboardScreen onLogout={handleLogout} selectedRole={selectedRole} currentUser={currentUser} />
+        <DashboardProvider>
+          <DashboardScreen onLogout={handleLogout} selectedRole={selectedRole} currentUser={currentUser} />
+        </DashboardProvider>
       </InventoryProvider>
     );
   }

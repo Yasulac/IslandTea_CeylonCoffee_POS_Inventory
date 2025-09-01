@@ -7,6 +7,10 @@ import {
 const productsCol = collection(db, 'products');
 const salesCol = collection(db, 'sales');
 
+// New collections/doc refs
+const usersCol = collection(db, 'users');
+const appSettingsDoc = doc(db, 'settings', 'app');
+
 // Real-time subscription to products
 export const subscribeToProducts = (onChange) => {
   return onSnapshot(productsCol, (snap) => {
@@ -214,4 +218,72 @@ export const getSaleById = async (saleId) => {
     console.error('Failed to get sale:', error);
     throw error;
   }
+};
+
+// Real-time subscription to users
+export const subscribeToUsers = (onChange) => {
+  return onSnapshot(usersCol, (snap) => {
+    const items = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    onChange(items);
+  });
+};
+
+export const getUsers = async () => {
+  const snap = await getDocs(usersCol);
+  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+};
+
+export const addUserDoc = async (user) => {
+  const payload = {
+    name: user.name,
+    role: user.role || 'Cashier',
+    email: user.email,
+    status: user.status || 'Active',
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  };
+  if (user.id) {
+    await setDoc(doc(db, 'users', String(user.id)), payload);
+    return String(user.id);
+  }
+  const ref = await addDoc(usersCol, payload);
+  return ref.id;
+};
+
+export const updateUserDoc = async (userId, updates) => {
+  const ref = doc(db, 'users', String(userId));
+  await updateDoc(ref, { ...updates, updatedAt: serverTimestamp() });
+};
+
+// App settings helpers
+export const getAppSettings = async () => {
+  const snap = await getDoc(appSettingsDoc);
+  if (snap.exists()) return { id: snap.id, ...snap.data() };
+  // Initialize defaults if not present
+  const defaults = {
+    currencyFormat: 'PHP',
+    defaultTaxRate: '12',
+    paymentGateways: { cash: true, gcash: true, maya: false, card: true },
+    notifications: {
+      lowStockThreshold: '5',
+      lowStock: true,
+      outOfStock: true,
+      largeTxn: false,
+      enabled: true,
+    },
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  };
+  await setDoc(appSettingsDoc, defaults);
+  return { id: 'app', ...defaults };
+};
+
+export const updateAppSettings = async (updates) => {
+  await updateDoc(appSettingsDoc, { ...updates, updatedAt: serverTimestamp() });
+};
+
+export const subscribeToAppSettings = (onChange) => {
+  return onSnapshot(appSettingsDoc, (snap) => {
+    if (snap.exists()) onChange({ id: snap.id, ...snap.data() });
+  });
 };
