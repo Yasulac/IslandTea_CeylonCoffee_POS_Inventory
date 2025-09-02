@@ -1,8 +1,5 @@
 # Dashboard Functionality Documentation
 
-## Overview
-The dashboard has been made functional with Firebase backend integration. It now displays real-time data from your Firebase database instead of static placeholder content.
-
 ## Features Implemented
 
 ### 1. Real-time Data Display

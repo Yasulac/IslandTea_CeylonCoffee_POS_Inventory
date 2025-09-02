@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { StyleSheet, Text, View, TouchableOpacity, ScrollView, SafeAreaView, TextInput, Alert } from 'react-native';
+import { StyleSheet, Text, View, TouchableOpacity, ScrollView, SafeAreaView, TextInput, Alert, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import CheckoutScreen from './CheckoutScreen';
 import TransactionReceiptScreen from './TransactionReceiptScreen';
@@ -22,7 +22,7 @@ const POSSaleScreen = ({ onBackToDashboard, selectedRole = 'Cashier' }) => {
       name: i.name, 
       price: Number(i.price) || 0, 
       category: i.category, 
-      image: null, 
+      image: i.imageURL || null, 
       stock: i.stock 
     }))
   ), [inventoryItems]);
@@ -41,7 +41,8 @@ const POSSaleScreen = ({ onBackToDashboard, selectedRole = 'Cashier' }) => {
         sku: product.sku, // Include SKU for Firestore lookup
         name: product.name,
         price: product.price,
-        quantity: 1 
+        quantity: 1,
+        image: product.image
       }]);
     }
   };
@@ -204,9 +205,17 @@ const POSSaleScreen = ({ onBackToDashboard, selectedRole = 'Cashier' }) => {
                     onPress={() => addToCart(product)}
                     activeOpacity={0.7}
                   >
-                    <View style={styles.productImagePlaceholder}>
-                      <Ionicons name="image-outline" size={24} color="#D1D5DB" />
-                    </View>
+                    {product.image ? (
+                      <Image 
+                        source={{ uri: product.image }} 
+                        style={styles.productImage}
+                        resizeMode="cover"
+                      />
+                    ) : (
+                      <View style={styles.productImagePlaceholder}>
+                        <Ionicons name="image-outline" size={24} color="#D1D5DB" />
+                      </View>
+                    )}
                     <Text style={styles.productName}>{product.name}</Text>
                     <Text style={styles.productPrice}>P{product.price.toFixed(2)}</Text>
                   </TouchableOpacity>
@@ -223,6 +232,19 @@ const POSSaleScreen = ({ onBackToDashboard, selectedRole = 'Cashier' }) => {
           <ScrollView style={styles.cartItemsContainer} showsVerticalScrollIndicator={false}>
             {cartItems.map((item) => (
               <View key={item.id} style={styles.cartItem}>
+                <View style={styles.itemImageContainer}>
+                  {item.image ? (
+                    <Image 
+                      source={{ uri: item.image }} 
+                      style={styles.cartItemImage}
+                      resizeMode="cover"
+                    />
+                  ) : (
+                    <View style={styles.cartItemImagePlaceholder}>
+                      <Ionicons name="image-outline" size={16} color="#D1D5DB" />
+                    </View>
+                  )}
+                </View>
                 <View style={styles.itemInfo}>
                   <Text style={styles.itemName}>{item.name}</Text>
                   <Text style={styles.itemPrice}>P{item.price.toFixed(2)}</Text>
@@ -432,6 +454,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginBottom: 8,
   },
+  productImage: {
+    width: 60,
+    height: 60,
+    borderRadius: 8,
+    marginBottom: 8,
+  },
   productName: {
     fontSize: 14,
     fontWeight: '600',
@@ -468,6 +496,22 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: '#F3F4F6',
+  },
+  itemImageContainer: {
+    marginRight: 12,
+  },
+  cartItemImage: {
+    width: 40,
+    height: 40,
+    borderRadius: 6,
+  },
+  cartItemImagePlaceholder: {
+    width: 40,
+    height: 40,
+    backgroundColor: '#F3F4F6',
+    borderRadius: 6,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   itemInfo: {
     flex: 1,

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import { StyleSheet, Text, View, TouchableOpacity, SafeAreaView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -8,6 +8,7 @@ const TransactionReceiptScreen = ({
   amountReceived = 0, 
   discount = 0, 
   referenceNumber = '',
+  transactionId, // Prefer passing the persisted sale/transaction ID
   onPrintReceipt, 
   onStartNewSale, 
   onViewTransactionHistory 
@@ -37,8 +38,11 @@ const TransactionReceiptScreen = ({
   };
 
   const generateTransactionNumber = () => {
-    return Math.floor(100000 + Math.random() * 900000); // Generate random 6-digit number
+    return Math.floor(100000 + Math.random() * 900000);
   };
+
+  // Stable transaction number for this screen instance
+  const stableTransactionNumberRef = useRef(transactionId || `TX-${generateTransactionNumber()}`);
 
   const getCurrentDateTime = () => {
     const now = new Date();
@@ -73,7 +77,7 @@ const TransactionReceiptScreen = ({
           
           {/* Transaction Info */}
           <View style={styles.transactionInfo}>
-            <Text style={styles.transactionNumber}>Transaction #{generateTransactionNumber()}</Text>
+            <Text style={styles.transactionNumber}>Transaction #{stableTransactionNumberRef.current}</Text>
             <Text style={styles.transactionDateTime}>{getCurrentDateTime()}</Text>
           </View>
 

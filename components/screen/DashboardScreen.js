@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, Text, View, TouchableOpacity, ScrollView, SafeAreaView, ActivityIndicator, RefreshControl } from 'react-native';
+import { StyleSheet, Text, View, TouchableOpacity, ScrollView, SafeAreaView, ActivityIndicator, RefreshControl, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import POSSaleScreen from './POSSaleScreen';
 import InventoryManagementScreen from './InventoryManagementScreen';
+import ProductManagementScreen from './ProductManagementScreen';
 import ReportsScreen from './ReportsScreen';
 import SettingsScreen from './SettingsScreen';
 import ProfileScreen from './ProfileScreen';
@@ -37,9 +38,11 @@ const DashboardScreen = ({ onLogout, selectedRole = 'Admin', currentUser }) => {
     { id: 1, title: 'Quick Sale', icon: 'add-circle-outline' },
     { id: 2, title: 'View Reports', icon: 'bar-chart-outline' },
     { id: 3, title: 'Inventory', icon: 'cube-outline' },
-    { id: 4, title: 'Settings', icon: 'settings-outline' },
-    { id: 5, title: 'Profile', icon: 'person-outline' },
-    { id: 6, title: 'Refresh', icon: 'refresh-outline' },
+    { id: 4, title: 'Product Management', icon: 'bag-outline' },
+    { id: 5, title: 'Settings', icon: 'settings-outline' },
+    { id: 6, title: 'Profile', icon: 'person-outline' },
+    { id: 7, title: 'Refresh', icon: 'refresh-outline' },
+    { id: 8, title: 'Setup Recipe System', icon: 'construct-outline' },
   ];
 
   // Update session time every second
@@ -78,6 +81,11 @@ const DashboardScreen = ({ onLogout, selectedRole = 'Admin', currentUser }) => {
   // Show Inventory Management Screen if currentScreen is 'inventory' and user is Admin
   if (currentScreen === 'inventory' && selectedRole === 'Admin') {
     return <InventoryManagementScreen onBackToDashboard={handleBackToDashboard} selectedRole={selectedRole} />;
+  }
+
+  // Show Product Management Screen if currentScreen is 'product-management' and user is Admin
+  if (currentScreen === 'product-management' && selectedRole === 'Admin') {
+    return <ProductManagementScreen onBackToDashboard={handleBackToDashboard} selectedRole={selectedRole} />;
   }
 
   // Show Reports Screen
@@ -263,9 +271,33 @@ const DashboardScreen = ({ onLogout, selectedRole = 'Admin', currentUser }) => {
                         case 1: handleStartSale(); break;
                         case 2: handleNavigation('reports'); break;
                         case 3: selectedRole === 'Admin' && handleNavigation('inventory'); break;
-                        case 4: selectedRole === 'Admin' && handleNavigation('settings'); break;
-                        case 5: handleNavigation('profile'); break;
-                        case 6: refreshDashboard(); break;
+                        case 4: selectedRole === 'Admin' && handleNavigation('product-management'); break;
+                        case 5: selectedRole === 'Admin' && handleNavigation('settings'); break;
+                        case 6: handleNavigation('profile'); break;
+                        case 7: refreshDashboard(); break;
+                        case 8: 
+                          Alert.alert(
+                            'Setup Recipe System',
+                            'This will add sample data to your Firebase database. Continue?',
+                            [
+                              { text: 'Cancel', style: 'cancel' },
+                              {
+                                text: 'Continue',
+                                onPress: async () => {
+                                  try {
+                                    const { default: addRecipeSystemData } = await import('../../setup-recipe-system-data.js');
+                                    await addRecipeSystemData();
+                                    Alert.alert('Success', 'Recipe system setup complete!');
+                                    refreshDashboard();
+                                  } catch (error) {
+                                    console.error('Setup error:', error);
+                                    Alert.alert('Error', 'Setup failed. Check console for details.');
+                                  }
+                                }
+                              }
+                            ]
+                          );
+                          break;
                         default: break;
                       }
                     }}

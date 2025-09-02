@@ -6,6 +6,7 @@ import {
 // Collections
 const salesCol = collection(db, 'sales');
 const productsCol = collection(db, 'products');
+const inventoryCol = collection(db, 'inventory');
 
 // Get today's sales summary
 export const getTodaySalesSummary = async () => {
@@ -80,31 +81,61 @@ export const getRecentTransactions = async (limitCount = 5) => {
   }
 };
 
-// Get low stock items
+// Get low stock items (now from inventory collection)
 export const getLowStockItems = async (threshold = 10) => {
   try {
-    const q = query(
-      productsCol,
-      where('stock', '<=', threshold),
-      orderBy('stock', 'asc')
-    );
-    
-    const querySnapshot = await getDocs(q);
-    const lowStockItems = [];
-    
-    querySnapshot.forEach((doc) => {
-      const data = doc.data();
-      lowStockItems.push({
-        id: doc.id,
-        name: data.name,
-        sku: data.sku,
-        stock: data.stock || 0,
-        threshold: threshold,
-        category: data.category
+    // First try with ordering (requires index)
+    try {
+      const q = query(
+        inventoryCol,
+        where('status', '==', 'low-stock'),
+        orderBy('currentStock', 'asc')
+      );
+      
+      const querySnapshot = await getDocs(q);
+      const lowStockItems = [];
+      
+      querySnapshot.forEach((doc) => {
+        const data = doc.data();
+        lowStockItems.push({
+          id: doc.id,
+          name: data.name,
+          sku: data.sku,
+          stock: data.currentStock || 0,
+          threshold: data.minStockLevel || threshold,
+          category: data.category,
+          unit: data.unit
+        });
       });
-    });
-    
-    return lowStockItems;
+      
+      return lowStockItems;
+    } catch (indexError) {
+      // If index doesn't exist, fall back to simple query and sort in memory
+      console.log('Index not ready, using fallback query...');
+      const q = query(
+        inventoryCol,
+        where('status', '==', 'low-stock')
+      );
+      
+      const querySnapshot = await getDocs(q);
+      const lowStockItems = [];
+      
+      querySnapshot.forEach((doc) => {
+        const data = doc.data();
+        lowStockItems.push({
+          id: doc.id,
+          name: data.name,
+          sku: data.sku,
+          stock: data.currentStock || 0,
+          threshold: data.minStockLevel || threshold,
+          category: data.category,
+          unit: data.unit
+        });
+      });
+      
+      // Sort in memory
+      return lowStockItems.sort((a, b) => a.stock - b.stock);
+    }
   } catch (error) {
     console.error('Error fetching low stock items:', error);
     return [];
@@ -138,10 +169,14 @@ export const getDashboardStats = async () => {
     const productsSnapshot = await getDocs(productsCol);
     const totalProducts = productsSnapshot.size;
     
+    // Get total inventory items count
+    const inventorySnapshot = await getDocs(inventoryCol);
+    const totalInventoryItems = inventorySnapshot.size;
+    
     // Get low stock count
     const lowStockQuery = query(
-      productsCol,
-      where('stock', '<=', 10)
+      inventoryCol,
+      where('status', '==', 'low-stock')
     );
     const lowStockSnapshot = await getDocs(lowStockQuery);
     const lowStockCount = lowStockSnapshot.size;
@@ -153,6 +188,7 @@ export const getDashboardStats = async () => {
       todaySales,
       todayTransactions,
       totalProducts,
+      totalInventoryItems,
       lowStockCount,
       sessionStartTime,
       averageTransaction: todayTransactions > 0 ? todaySales / todayTransactions : 0
@@ -163,6 +199,7 @@ export const getDashboardStats = async () => {
       todaySales: 0,
       todayTransactions: 0,
       totalProducts: 0,
+      totalInventoryItems: 0,
       lowStockCount: 0,
       sessionStartTime: new Date(),
       averageTransaction: 0
